@@ -9,11 +9,450 @@
   <meta name="apple-mobile-web-app-title" content="Landa's Lists">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon.jpg">
-  <title>Landa's Lists</title>
-  <!-- Note: Full file is large due to embedded icon; this is a placeholder for the tool call size limit. Actual content should be uploaded separately if needed. -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; background: #0f0a1a; }
+    h1, h2 { font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.5px; }
+    .app-frame { border: 8px solid #1a1025; box-shadow: 0 0 0 2px #4c1d95; }
+    .dark body, body.dark { background: #0f0a1a; }
+    body.dark .app-frame { background: #111827; color: #f3f4f6; }
+    body.dark .bg-white { background: #1f2937 !important; color: #f3f4f6; }
+    body.dark .border { border-color: #374151 !important; }
+    body.dark .text-gray-500, body.dark .text-gray-600 { color: #9ca3af !important; }
+    body.dark .bg-gray-100 { background: #374151 !important; }
+    body.dark input, body.dark select { background: #1f2937; color: #f3f4f6; border-color: #4b5563; }
+    body.dark .genre-chip, body.dark .platform-toggle { background: #1f2937; color: #e5e7eb; border-color: #4b5563; }
+    .genre-chip.selected, .platform-toggle.selected { background: #7c3aed !important; color: white !important; border-color: #7c3aed !important; }
+    body.dark .card { background: #1f2937; border-color: #374151; }
+    body.dark nav { background: #111827; border-color: #374151; }
+    .skeleton { animation: shimmer 1.8s infinite; background: linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%); background-size: 200% 100%; }
+    @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+  </style>
 </head>
 <body>
-  <p>Full self-contained app. Please re-upload the complete landas-lists.html from your local copy if this is truncated.</p>
+  <!-- Splash -->
+  <div id="splash" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-br from-purple-900 via-indigo-900 to-black transition-opacity duration-500 cursor-pointer">
+    <img src="icon.jpg" alt="Landa's Lists" class="w-40 h-40 rounded-3xl shadow-2xl mb-6">
+    <h1 class="text-5xl text-yellow-400">Landa's Lists</h1>
+    <p class="text-purple-200 mt-1 text-sm">Find your next favorite</p>
+    <div class="mt-8 w-8 h-8 border-4 border-purple-300 border-t-yellow-400 rounded-full animate-spin"></div>
+    <p class="text-purple-300 text-xs mt-3 tracking-widest">LOADING • TAP TO SKIP</p>
+  </div>
+
+  <div class="max-w-md mx-auto bg-white min-h-screen app-frame relative">
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-5 sticky top-0 z-20">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <button id="backBtn" class="hidden p-2 rounded-full hover:bg-white/20" title="Back">
+            <i class="fas fa-arrow-left text-xl"></i>
+          </button>
+          <div>
+            <h1 class="text-2xl">Landa's Lists</h1>
+            <p class="text-purple-200 text-sm">Find your next favorite</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-1">
+          <button id="darkToggle" class="p-2 rounded-full hover:bg-white/20" title="Toggle dark mode">
+            <i id="darkIcon" class="fas fa-moon text-xl"></i>
+          </button>
+          <button id="settingsBtn" class="p-2 rounded-full hover:bg-white/20">
+            <i class="fas fa-cog text-xl"></i>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end justify-center">
+      <div class="bg-white w-full max-w-md rounded-t-3xl p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl">Settings</h2>
+          <button id="closeSettings" class="text-2xl">&times;</button>
+        </div>
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <span>Dark Mode</span>
+            <button id="settingsDarkToggle" class="relative w-12 h-6 bg-gray-300 rounded-full">
+              <span id="settingsDarkKnob" class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform"></span>
+            </button>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">TMDB API Key</label>
+            <input id="apiKeyInput" type="password" placeholder="Get free key at themoviedb.org" value="091800b6b76094bf4cee9379a660aab8" class="w-full border rounded-xl px-4 py-3">
+            <p class="text-xs text-gray-500 mt-1">Free for personal use. <a href="https://www.themoviedb.org/settings/api" target="_blank" class="text-purple-600 underline">Get yours</a></p>
+          </div>
+          <button id="saveSettings" class="w-full bg-purple-600 text-white py-3 rounded-xl font-semibold">Save</button>
+          <div id="locationStatus" class="text-sm text-gray-600"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main -->
+    <main class="p-4 pb-28">
+      <section class="mb-6">
+        <h2 class="text-lg mb-3">What are you in the mood for?</h2>
+        <input id="moodInput" type="text" placeholder="e.g. cozy mystery, dark fantasy series..." class="w-full border-2 border-gray-200 rounded-2xl px-4 py-4 mb-4">
+        <div id="genreChips" class="flex flex-wrap gap-2 mb-4"></div>
+        <div class="flex bg-gray-100 rounded-xl p-1 mb-4">
+          <button data-type="tv" class="type-btn flex-1 py-2 rounded-lg text-sm">Series</button>
+          <button data-type="movie" class="type-btn flex-1 py-2 rounded-lg text-sm">Movies</button>
+          <button data-type="both" class="type-btn flex-1 py-2 rounded-lg text-sm bg-white shadow">Both</button>
+        </div>
+      </section>
+
+      <section class="mb-6">
+        <h2 class="text-lg mb-3">Your Streaming Services</h2>
+        <div id="platformToggles" class="flex flex-wrap gap-2"></div>
+      </section>
+
+      <section class="mb-6">
+        <div class="flex gap-2">
+          <select id="sortBy" class="flex-1 border rounded-xl px-3 py-2 text-sm">
+            <option value="popularity.desc">Most Popular</option>
+            <option value="vote_average.desc">Highest Rated</option>
+            <option value="first_air_date.desc">Newest</option>
+          </select>
+          <button id="searchBtn" class="bg-purple-600 text-white px-6 py-2 rounded-xl font-semibold">Find</button>
+        </div>
+      </section>
+
+      <section id="resultsSection" class="hidden">
+        <div class="flex justify-between items-center mb-3">
+          <h2 class="text-lg">Your Lists</h2>
+          <span id="resultCount" class="text-sm text-gray-500"></span>
+        </div>
+        <div id="results" class="space-y-4"></div>
+      </section>
+
+      <div id="emptyState" class="text-center py-12 text-gray-400">
+        <img src="icon.jpg" alt="Landa's Lists" class="w-32 h-32 mx-auto rounded-3xl shadow-lg mb-6">
+        <p class="text-lg font-medium text-gray-600">Tell Landa what you're craving</p>
+        <p class="text-sm mt-1">Pick a genre or describe a vibe</p>
+      </div>
+    </main>
+
+    <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t flex justify-around py-3 z-10">
+      <button class="flex flex-col items-center text-purple-600"><i class="fas fa-home"></i><span class="text-xs mt-1">Discover</span></button>
+      <button class="flex flex-col items-center text-gray-400"><i class="fas fa-heart"></i><span class="text-xs mt-1">Saved</span></button>
+      <button class="flex flex-col items-center text-gray-400"><i class="fas fa-list"></i><span class="text-xs mt-1">My Lists</span></button>
+    </nav>
+  </div>
+
+  <script>
+    const GENRES = [
+      {id:28,name:"Action"},{id:12,name:"Adventure"},{id:16,name:"Animation"},{id:35,name:"Comedy"},
+      {id:80,name:"Crime"},{id:99,name:"Documentary"},{id:18,name:"Drama"},{id:10751,name:"Family"},
+      {id:14,name:"Fantasy"},{id:36,name:"History"},{id:27,name:"Horror"},{id:9648,name:"Mystery"},
+      {id:10749,name:"Romance"},{id:878,name:"Sci-Fi"},{id:53,name:"Thriller"},{id:10752,name:"War"}
+    ];
+    const PLATFORMS = [
+      {id:8,name:"Netflix"},{id:15,name:"Hulu"},{id:337,name:"Disney+"},{id:9,name:"Prime Video"},
+      {id:384,name:"Max"},{id:350,name:"Apple TV+"},{id:386,name:"Peacock"},{id:531,name:"Paramount+"},
+      {id:283,name:"Crunchyroll"},{id:73,name:"Tubi"}
+    ];
+
+    let selectedGenres = new Set();
+    let selectedPlatforms = new Set(PLATFORMS.map(p => p.id));
+    let selectedType = "both";
+    let apiKey = localStorage.getItem("tmdb_api_key") || "091800b6b76094bf4cee9379a660aab8";
+    let darkMode = localStorage.getItem("dark_mode") === "true";
+
+    document.addEventListener("DOMContentLoaded", () => {
+      if (darkMode) document.body.classList.add("dark");
+      try { updateDarkUI(); } catch(e) {}
+      setTimeout(refreshSelectedButtonStyles, 100);
+
+      const splash = document.getElementById("splash");
+      const hideSplash = () => {
+        if (!splash) return;
+        splash.style.opacity = "0";
+        setTimeout(() => { splash.style.display = "none"; }, 500);
+      };
+      setTimeout(hideSplash, 1500);
+      if (splash) splash.addEventListener("click", hideSplash);
+
+      try { renderGenres(); } catch(e) {}
+      try { renderPlatforms(); } catch(e) {}
+      if (!apiKey) setTimeout(() => {
+        const modal = document.getElementById("settingsModal");
+        if (modal) modal.classList.remove("hidden");
+      }, 800);
+
+      const darkToggle = document.getElementById("darkToggle");
+      if (darkToggle) darkToggle.onclick = toggleDark;
+      const settingsDarkToggle = document.getElementById("settingsDarkToggle");
+      if (settingsDarkToggle) settingsDarkToggle.onclick = toggleDark;
+      const settingsBtn = document.getElementById("settingsBtn");
+      if (settingsBtn) settingsBtn.onclick = () => document.getElementById("settingsModal").classList.remove("hidden");
+      const closeSettings = document.getElementById("closeSettings");
+      if (closeSettings) closeSettings.onclick = () => document.getElementById("settingsModal").classList.add("hidden");
+      const saveSettingsBtn = document.getElementById("saveSettings");
+      if (saveSettingsBtn) saveSettingsBtn.onclick = saveSettings;
+      const searchBtn = document.getElementById("searchBtn");
+      if (searchBtn) searchBtn.onclick = performSearch;
+      const moodInput = document.getElementById("moodInput");
+      if (moodInput) moodInput.onkeypress = e => { if (e.key === "Enter") performSearch(); };
+      const backBtn = document.getElementById("backBtn");
+      if (backBtn) backBtn.onclick = goBack;
+
+      // Type toggle (Movies / Series / Both)
+      document.querySelectorAll(".type-btn").forEach(btn => {
+        btn.onclick = () => {
+          document.querySelectorAll(".type-btn").forEach(b => b.classList.remove("bg-white", "shadow", "font-semibold"));
+          btn.classList.add("bg-white", "shadow", "font-semibold");
+          selectedType = btn.dataset.type;
+        };
+      });
+    });
+
+    function renderGenres() {
+      document.getElementById("genreChips").innerHTML = GENRES.map(g =>
+        `<button data-id="${g.id}" class="genre-chip px-4 py-2 rounded-full border text-sm bg-white">${g.name}</button>`
+      ).join("");
+      document.querySelectorAll(".genre-chip").forEach(btn => {
+        btn.onclick = () => {
+          const id = +btn.dataset.id;
+          if (selectedGenres.has(id)) {
+            selectedGenres.delete(id);
+            btn.classList.remove("selected");
+            btn.style.background = "";
+            btn.style.color = "";
+            btn.style.borderColor = "";
+          } else {
+            selectedGenres.add(id);
+            btn.classList.add("selected");
+            const isDark = document.body.classList.contains("dark");
+            btn.style.background = isDark ? "#e5e7eb" : "#7c3aed";
+            btn.style.color = isDark ? "#111827" : "white";
+            btn.style.borderColor = isDark ? "#e5e7eb" : "#7c3aed";
+          }
+        };
+      });
+    }
+
+    function renderPlatforms() {
+      document.getElementById("platformToggles").innerHTML = PLATFORMS.map(p =>
+        `<button data-id="${p.id}" class="platform-toggle selected px-3 py-1 rounded-full text-xs border bg-white">${p.name}</button>`
+      ).join("");
+      document.querySelectorAll(".platform-toggle").forEach(btn => {
+        btn.onclick = () => {
+          const id = +btn.dataset.id;
+          if (selectedPlatforms.has(id)) {
+            selectedPlatforms.delete(id);
+            btn.classList.remove("selected");
+            btn.style.background = "";
+            btn.style.color = "";
+          } else {
+            selectedPlatforms.add(id);
+            btn.classList.add("selected");
+            const isDark = document.body.classList.contains("dark");
+            btn.style.background = isDark ? "#e5e7eb" : "#7c3aed";
+            btn.style.color = isDark ? "#111827" : "white";
+          }
+        };
+      });
+    }
+
+    function toggleDark() {
+      darkMode = !darkMode;
+      document.body.classList.toggle("dark", darkMode);
+      localStorage.setItem("dark_mode", darkMode);
+      updateDarkUI();
+      refreshSelectedButtonStyles();
+    }
+
+    function refreshSelectedButtonStyles() {
+      const isDark = darkMode;
+      document.querySelectorAll(".genre-chip.selected, .platform-toggle.selected").forEach(btn => {
+        btn.style.background = isDark ? "#e5e7eb" : "#7c3aed";
+        btn.style.color = isDark ? "#111827" : "white";
+        if (btn.classList.contains("genre-chip")) {
+          btn.style.borderColor = isDark ? "#e5e7eb" : "#7c3aed";
+        }
+      });
+    }
+
+    function updateDarkUI() {
+      const icon = document.getElementById("darkIcon");
+      const knob = document.getElementById("settingsDarkKnob");
+      const toggle = document.getElementById("settingsDarkToggle");
+      if (darkMode) {
+        icon.className = "fas fa-sun text-xl";
+        toggle.classList.replace("bg-gray-300","bg-purple-600");
+        knob.style.transform = "translateX(24px)";
+      } else {
+        icon.className = "fas fa-moon text-xl";
+        toggle.classList.replace("bg-purple-600","bg-gray-300");
+        knob.style.transform = "translateX(0)";
+      }
+    }
+
+    function saveSettings() {
+      apiKey = document.getElementById("apiKeyInput").value.trim();
+      localStorage.setItem("tmdb_api_key", apiKey);
+      document.getElementById("settingsModal").classList.add("hidden");
+      if (apiKey) alert("API key saved!");
+    }
+
+    function goBack() {
+      document.getElementById("resultsSection").classList.add("hidden");
+      document.getElementById("emptyState").classList.remove("hidden");
+      document.getElementById("backBtn").classList.add("hidden");
+      document.getElementById("moodInput").value = "";
+    }
+
+    async function performSearch() {
+      if (!apiKey) { alert("Add your TMDB API key in Settings first."); document.getElementById("settingsModal").classList.remove("hidden"); return; }
+      document.getElementById("emptyState").classList.add("hidden");
+      document.getElementById("resultsSection").classList.remove("hidden");
+      document.getElementById("backBtn").classList.remove("hidden");
+      document.getElementById("results").innerHTML = '<div class="text-center py-8 text-gray-500">Searching...</div>';
+
+      try {
+        let results = [];
+        const sort = document.getElementById("sortBy").value;
+        const mood = document.getElementById("moodInput").value.trim();
+        if (selectedType === "tv" || selectedType === "both") {
+          results = results.concat((await searchTMDB("tv", mood, sort)).map(r => ({...r, media_type:"tv"})));
+        }
+        if (selectedType === "movie" || selectedType === "both") {
+          results = results.concat((await searchTMDB("movie", mood, sort)).map(r => ({...r, media_type:"movie"})));
+        }
+        results.sort((a,b) => (b.popularity||0) - (a.popularity||0));
+        displayResults(results.slice(0,15));
+      } catch (e) {
+        document.getElementById("results").innerHTML = `
+          <div class="text-center text-red-500 py-8 px-4">
+            <p class="font-medium">Couldn't load results</p>
+            <p class="text-sm mt-2">${e.message}</p>
+            <p class="text-xs mt-3 text-gray-500">Make sure your TMDB API key is correct.<br>Data comes from The Movie Database (TMDB) — a free open database.</p>
+          </div>`;
+      }
+    }
+
+    async function searchTMDB(type, query, sort) {
+      let url = `https://api.themoviedb.org/3/discover/${type}?api_key=${apiKey}&sort_by=${sort}&language=en-US&page=1`;
+      if (selectedGenres.size) url += `&with_genres=${[...selectedGenres].join(",")}`;
+      if (query) url += `&with_keywords=${encodeURIComponent(query)}`;
+      if (selectedPlatforms.size && selectedPlatforms.size < PLATFORMS.length) {
+        url += `&with_watch_providers=${[...selectedPlatforms].join("|")}&watch_region=US`;
+      }
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("API failed");
+      return (await res.json()).results || [];
+    }
+
+    function displayResults(items) {
+      document.getElementById("resultCount").textContent = items.length + " results";
+      const container = document.getElementById("results");
+      if (!items.length) { 
+        container.innerHTML = '<div class="text-center text-gray-500 py-12">No matches. Try different genres.</div>'; 
+        return; 
+      }
+      container.innerHTML = items.map(item => {
+        const title = item.title || item.name;
+        const year = (item.release_date || item.first_air_date || "").slice(0,4);
+        const poster = item.poster_path ? `https://image.tmdb.org/t/p/w200${item.poster_path}` : "";
+        const id = item.id;
+        const type = item.media_type;
+        return `
+          <div class="card bg-white rounded-2xl overflow-hidden shadow border flex cursor-pointer" data-id="${id}" data-type="${type}" onclick="showDetail(this)">
+            ${poster ? `<img src="${poster}" class="w-20 h-30 object-cover">` : '<div class="w-20 bg-gray-200"></div>'}
+            <div class="p-3 flex-1">
+              <div class="font-semibold">${title}</div>
+              <div class="text-xs text-gray-500">${year} • ${type === "tv" ? "Series" : "Movie"}</div>
+              <div class="text-xs mt-1 text-gray-600 episode-info" data-id="${id}" data-type="${type}"></div>
+              <div class="text-xs mt-1 line-clamp-2">${item.overview || ""}</div>
+              <div class="platforms text-xs mt-2 text-purple-700" data-id="${id}" data-type="${type}">Checking platforms...</div>
+            </div>
+          </div>`;
+      }).join("");
+
+      // Fetch platforms and episode info for each
+      items.forEach(item => fetchExtraInfo(item));
+    }
+
+    async function fetchExtraInfo(item) {
+      const id = item.id;
+      const type = item.media_type;
+      // Episode count
+      if (type === "tv") {
+        try {
+          const res = await fetch(`https://api.themoviedb.org/3/tv/${id}?api_key=${apiKey}`);
+          const d = await res.json();
+          const eps = d.number_of_episodes || 0;
+          const seasons = d.number_of_seasons || 0;
+          const el = document.querySelector(`.episode-info[data-id="${id}"]`);
+          if (el) el.textContent = `${seasons} season${seasons !== 1 ? "s" : ""} • ${eps} episode${eps !== 1 ? "s" : ""}`;
+        } catch(e) {}
+      }
+      // Platforms / streaming count
+      try {
+        const res = await fetch(`https://api.themoviedb.org/3/${type}/${id}/watch/providers?api_key=${apiKey}`);
+        const data = await res.json();
+        const us = data.results?.US?.flatrate || [];
+        const matching = us.filter(p => selectedPlatforms.has(p.provider_id) || selectedPlatforms.size === PLATFORMS.length);
+        const names = matching.map(p => p.provider_name).slice(0, 4);
+        const el = document.querySelector(`.platforms[data-id="${id}"]`);
+        if (el) {
+          el.textContent = names.length 
+            ? `On ${matching.length} service${matching.length !== 1 ? "s" : ""}: ${names.join(", ")}` 
+            : "Not on your selected services";
+        }
+      } catch(e) {
+        const el = document.querySelector(`.platforms[data-id="${id}"]`);
+        if (el) el.textContent = "Platforms unavailable";
+      }
+    }
+
+    async function showDetail(el) {
+      const id = el.dataset.id;
+      const type = el.dataset.type;
+      document.getElementById("results").innerHTML = '<div class="text-center py-8">Loading details...</div>';
+      try {
+        const res = await fetch(`https://api.themoviedb.org/3/${type}/${id}?api_key=${apiKey}`);
+        const d = await res.json();
+        const title = d.title || d.name;
+        const year = (d.release_date || d.first_air_date || "").slice(0,4);
+        const poster = d.poster_path ? `https://image.tmdb.org/t/p/w300${d.poster_path}` : "";
+        let bingeInfo = "";
+        if (type === "tv") {
+          const episodes = d.number_of_episodes || 0;
+          const seasons = d.number_of_seasons || 0;
+          const status = d.status || "";
+          const next = d.next_episode_to_air;
+          bingeInfo = `<p class="mt-2 text-sm text-gray-600">${seasons} season${seasons !== 1 ? "s" : ""} • ${episodes} episode${episodes !== 1 ? "s" : ""}</p>`;
+          if (status === "Ended" || (episodes > 0 && !next)) {
+            bingeInfo += `<p class="mt-2 text-green-700 font-medium"><i class="fas fa-check-circle mr-1"></i> Bingeable — all ${episodes} episodes available</p>`;
+          } else if (next) {
+            const date = new Date(next.air_date);
+            const day = date.toLocaleDateString(undefined, { weekday: "long" });
+            bingeInfo += `<p class="mt-2 text-blue-700 font-medium"><i class="fas fa-calendar-alt mr-1"></i> Episodic — New episodes on ${day}s</p>
+                         <p class="text-sm text-gray-600">Next: S${next.season_number}E${next.episode_number} on ${next.air_date}</p>`;
+          } else {
+            bingeInfo += `<p class="mt-2 text-gray-600">Series status: ${status}</p>`;
+          }
+        } else {
+          bingeInfo = `<p class="mt-3 text-green-700 font-medium"><i class="fas fa-film mr-1"></i> Movie — Watch anytime</p>`;
+        }
+        document.getElementById("results").innerHTML = `
+          <div class="card bg-white rounded-2xl overflow-hidden shadow border p-4">
+            <button onclick="goBack()" class="text-purple-600 text-sm mb-3"><i class="fas fa-arrow-left mr-1"></i> Back to list</button>
+            ${poster ? `<img src="${poster}" class="w-full max-w-xs mx-auto rounded-xl mb-4">` : ""}
+            <h2 class="text-2xl">${title} (${year})</h2>
+            <p class="text-sm text-gray-600 mt-2">${d.overview || ""}</p>
+            ${bingeInfo}
+          </div>`;
+      } catch(e) {
+        document.getElementById("results").innerHTML = `<div class="text-center text-red-500 py-8">Couldn't load details</div>`;
+      }
+    }
+  </script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
