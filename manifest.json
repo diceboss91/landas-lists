@@ -1,0 +1,17 @@
+{
+  "name": "Landa's Lists",
+  "short_name": "Landa's Lists",
+  "description": "Find your next favorite movie or TV show",
+  "start_url": "./landas-lists.html",
+  "display": "standalone",
+  "background_color": "#1a1025",
+  "theme_color": "#7c3aed",
+  "icons": [
+    {
+      "src": "icon.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}
