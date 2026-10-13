@@ -111,6 +111,7 @@
 
     <!-- Main -->
     <main class="p-4 pb-28">
+      <div id="discoverForm">
       <section class="mb-6">
         <h2 class="text-lg mb-3">What are you in the mood for?</h2>
         <input id="actorInput" type="text" placeholder="Actor, e.g. Tom Hanks" class="w-full border-2 border-gray-200 rounded-2xl px-4 py-4 mb-3">
@@ -142,10 +143,12 @@
           <button id="searchBtn" class="ll-btn text-white px-6 py-2 rounded-xl font-semibold">Find</button>
         </div>
       </section>
+      </div>
 
       <section id="resultsSection" class="hidden">
-        <div class="flex justify-between items-center mb-3">
-          <h2 class="text-lg">Your Lists</h2>
+        <div class="flex justify-between items-center mb-3 gap-2">
+          <h2 class="text-lg" id="resultsTitle">Your Lists</h2>
+          <button id="saveSearchBtn" class="ll-btn text-white text-xs px-3 py-2 rounded-lg hidden">Save search</button>
           <span id="resultCount" class="text-sm text-gray-500"></span>
         </div>
         <div id="results" class="space-y-4"></div>
@@ -154,14 +157,19 @@
       <div id="emptyState" class="text-center py-12 text-gray-400">
         <img src="icon.jpg?v=2" alt="Landa's Lists" class="w-32 h-32 mx-auto rounded-3xl shadow-lg mb-6">
         <p class="text-lg font-medium text-gray-600">Tell Landa what you're craving</p>
-        <p class="text-sm mt-1">Pick a genre or describe a vibe</p>
+        <p class="text-sm mt-1">Pick a genre, an actor, or a keyword</p>
       </div>
+
+      <section id="listsPanel" class="hidden">
+        <h2 class="text-lg mb-3">My Lists</h2>
+        <div id="myLists" class="space-y-3"></div>
+      </section>
     </main>
 
     <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t flex justify-around py-3 z-10">
-      <button class="flex flex-col items-center ll-link"><i class="fas fa-home"></i><span class="text-xs mt-1">Discover</span></button>
-      <button class="flex flex-col items-center text-gray-400"><i class="fas fa-heart"></i><span class="text-xs mt-1">Saved</span></button>
-      <button class="flex flex-col items-center text-gray-400"><i class="fas fa-list"></i><span class="text-xs mt-1">My Lists</span></button>
+      <button id="tabDiscover" class="flex flex-col items-center ll-link"><i class="fas fa-home"></i><span class="text-xs mt-1">Discover</span></button>
+      <button id="tabSaved" class="flex flex-col items-center text-gray-400"><i class="fas fa-heart"></i><span class="text-xs mt-1">Saved</span></button>
+      <button id="tabLists" class="flex flex-col items-center text-gray-400"><i class="fas fa-list"></i><span class="text-xs mt-1">My Lists</span></button>
     </nav>
   </div>
 
@@ -182,6 +190,8 @@
     let selectedType = "both";
     let lastResults = [];
     let viewingDetail = false;
+    let listOrigin = "discover";
+    let openListName = "";
     let apiKey = localStorage.getItem("tmdb_api_key") || "ed8d56e224716858d23dd28f22d8238c";
     if (apiKey === "091800b6b76094bf4cee9379a660aab8") {
       apiKey = "ed8d56e224716858d23dd28f22d8238c";
@@ -227,6 +237,14 @@
       if (actorInput) actorInput.onkeypress = e => { if (e.key === "Enter") performSearch(); };
       const backBtn = document.getElementById("backBtn");
       if (backBtn) backBtn.onclick = goBack;
+      const saveSearchBtn = document.getElementById("saveSearchBtn");
+      if (saveSearchBtn) saveSearchBtn.onclick = saveCurrentSearch;
+      const tabDiscover = document.getElementById("tabDiscover");
+      if (tabDiscover) tabDiscover.onclick = showDiscover;
+      const tabSaved = document.getElementById("tabSaved");
+      if (tabSaved) tabSaved.onclick = showSaved;
+      const tabLists = document.getElementById("tabLists");
+      if (tabLists) tabLists.onclick = showLists;
 
       // Type toggle (Movies / Series / Both)
       document.querySelectorAll(".type-btn").forEach(btn => {
@@ -312,9 +330,8 @@
 
     function goBack() {
       if (viewingDetail) { returnToList(); return; }
-      document.getElementById("resultsSection").classList.add("hidden");
-      document.getElementById("emptyState").classList.remove("hidden");
-      document.getElementById("backBtn").classList.add("hidden");
+      if (listOrigin === "saved-list") { showLists(); return; }
+      showDiscover();
       document.getElementById("moodInput").value = "";
       document.getElementById("actorInput").value = "";
     }
@@ -359,7 +376,7 @@
           }
           results = sortResults(results, sort);
         }
-        displayResults(results.slice(0,15));
+        displayResults(results.slice(0,15), "search");
       } catch (e) {
         document.getElementById("results").innerHTML = `
           <div class="text-center text-red-500 py-8 px-4">
@@ -440,10 +457,179 @@
       return (await res.json()).results || [];
     }
 
-    function displayResults(items) {
-      lastResults = items;
+    function escapeHtml(s) {
+      return String(s || "").replace(/[&<>"']/g, c => "&#" + c.charCodeAt(0) + ";");
+    }
+
+    function compactItem(item) {
+      return {
+        id: item.id,
+        media_type: item.media_type,
+        title: item.title,
+        name: item.name,
+        poster_path: item.poster_path,
+        overview: (item.overview || "").slice(0, 280),
+        release_date: item.release_date,
+        first_air_date: item.first_air_date,
+        genre_ids: item.genre_ids || []
+      };
+    }
+
+    function loadTitles() {
+      try { return JSON.parse(localStorage.getItem("landas_saved_titles") || "[]"); } catch (e) { return []; }
+    }
+
+    function loadLists() {
+      try { return JSON.parse(localStorage.getItem("landas_lists") || "[]"); } catch (e) { return []; }
+    }
+
+    function isSaved(id, type) {
+      return loadTitles().some(s => String(s.id) === String(id) && s.media_type === type);
+    }
+
+    function setTab(name) {
+      const on = "flex flex-col items-center ll-link";
+      const off = "flex flex-col items-center text-gray-400";
+      document.getElementById("tabDiscover").className = name === "discover" ? on : off;
+      document.getElementById("tabSaved").className = name === "saved" ? on : off;
+      document.getElementById("tabLists").className = name === "lists" ? on : off;
+    }
+
+    function showDiscover() {
+      setTab("discover");
+      viewingDetail = false;
+      listOrigin = "discover";
+      document.getElementById("discoverForm").classList.remove("hidden");
+      document.getElementById("listsPanel").classList.add("hidden");
+      document.getElementById("resultsSection").classList.add("hidden");
+      document.getElementById("emptyState").classList.remove("hidden");
+      document.getElementById("backBtn").classList.add("hidden");
+    }
+
+    function showSaved() {
+      setTab("saved");
+      viewingDetail = false;
+      document.getElementById("discoverForm").classList.add("hidden");
+      document.getElementById("listsPanel").classList.add("hidden");
+      document.getElementById("emptyState").classList.add("hidden");
+      document.getElementById("resultsSection").classList.remove("hidden");
+      document.getElementById("backBtn").classList.remove("hidden");
+      const items = loadTitles();
+      if (!items.length) {
+        listOrigin = "saved";
+        lastResults = [];
+        document.getElementById("resultsTitle").textContent = "Saved";
+        document.getElementById("resultCount").textContent = "0 titles";
+        document.getElementById("saveSearchBtn").classList.add("hidden");
+        document.getElementById("results").innerHTML = '<div class="text-center text-gray-500 py-12">No saved titles yet. Tap the heart on a show.</div>';
+        return;
+      }
+      displayResults(items, "saved");
+    }
+
+    function showLists() {
+      setTab("lists");
+      viewingDetail = false;
+      listOrigin = "lists";
+      document.getElementById("discoverForm").classList.add("hidden");
+      document.getElementById("resultsSection").classList.add("hidden");
+      document.getElementById("emptyState").classList.add("hidden");
+      document.getElementById("listsPanel").classList.remove("hidden");
+      document.getElementById("backBtn").classList.add("hidden");
+      const lists = loadLists();
+      const box = document.getElementById("myLists");
+      if (!lists.length) {
+        box.innerHTML = '<p class="text-center text-gray-500 py-12">No lists yet. Run a search, then tap Save search.</p>';
+        return;
+      }
+      box.innerHTML = lists.map(list => `
+        <div class="card bg-white rounded-2xl border shadow p-4">
+          <div class="font-semibold">${escapeHtml(list.name)}</div>
+          <div class="text-xs text-gray-500 mt-1">${list.items.length} title${list.items.length === 1 ? "" : "s"}</div>
+          <div class="flex gap-2 mt-3">
+            <button class="ll-btn text-white flex-1 py-2 rounded-xl text-sm" onclick="openSavedList(${list.id})">Open</button>
+            <button class="border flex-1 py-2 rounded-xl text-sm" onclick="deleteSavedList(${list.id})">Delete</button>
+          </div>
+        </div>`).join("");
+    }
+
+    function searchLabel() {
+      const actor = document.getElementById("actorInput").value.trim();
+      const keywords = document.getElementById("moodInput").value.trim();
+      const sortLabel = document.getElementById("sortBy").selectedOptions[0].text;
+      const genres = GENRES.filter(g => selectedGenres.has(g.id)).map(g => g.name);
+      const parts = [actor, keywords, ...genres].filter(Boolean);
+      return (parts.join(" · ") || sortLabel).slice(0, 80);
+    }
+
+    function saveCurrentSearch() {
+      if (!lastResults.length) return;
+      const lists = loadLists();
+      lists.unshift({ id: Date.now(), name: searchLabel(), items: lastResults.map(compactItem) });
+      localStorage.setItem("landas_lists", JSON.stringify(lists.slice(0, 40)));
+      const btn = document.getElementById("saveSearchBtn");
+      if (btn) {
+        btn.textContent = "Saved";
+        setTimeout(() => { btn.textContent = "Save search"; }, 1200);
+      }
+    }
+
+    function openSavedList(id) {
+      const list = loadLists().find(l => l.id === id);
+      if (!list) return;
+      openListName = list.name;
+      document.getElementById("listsPanel").classList.add("hidden");
+      document.getElementById("discoverForm").classList.add("hidden");
+      document.getElementById("emptyState").classList.add("hidden");
+      document.getElementById("resultsSection").classList.remove("hidden");
+      document.getElementById("backBtn").classList.remove("hidden");
+      displayResults(list.items, "saved-list");
+    }
+
+    function deleteSavedList(id) {
+      const lists = loadLists().filter(l => l.id !== id);
+      localStorage.setItem("landas_lists", JSON.stringify(lists));
+      showLists();
+    }
+
+    function toggleSaveTitle(btn) {
+      const id = btn.dataset.id;
+      const type = btn.dataset.type;
+      let saved = loadTitles();
+      const idx = saved.findIndex(s => String(s.id) === String(id) && s.media_type === type);
+      if (idx >= 0) saved.splice(idx, 1);
+      else {
+        const item = lastResults.find(r => String(r.id) === String(id) && r.media_type === type);
+        if (item) saved.unshift(compactItem(item));
+      }
+      localStorage.setItem("landas_saved_titles", JSON.stringify(saved));
+      if (listOrigin === "saved" && !viewingDetail) showSaved();
+      else updateHearts();
+    }
+
+    function updateHearts() {
+      document.querySelectorAll(".heart-btn").forEach(btn => {
+        const on = isSaved(btn.dataset.id, btn.dataset.type);
+        btn.classList.toggle("ll-link", on);
+        btn.classList.toggle("text-gray-300", !on);
+        const icon = btn.querySelector("i");
+        if (icon) icon.className = (on ? "fas" : "far") + " fa-heart";
+      });
+      const detail = document.getElementById("detailHeart");
+      if (detail) detail.textContent = isSaved(detail.dataset.id, detail.dataset.type) ? "Saved" : "Save title";
+    }
+
+    function displayResults(items, origin) {
+      if (origin) listOrigin = origin;
+      lastResults = items.slice();
       viewingDetail = false;
       document.getElementById("resultCount").textContent = items.length + " results";
+      const saveBtn = document.getElementById("saveSearchBtn");
+      if (saveBtn) saveBtn.classList.toggle("hidden", listOrigin !== "search");
+      const titleEl = document.getElementById("resultsTitle");
+      if (titleEl) {
+        titleEl.textContent = listOrigin === "saved" ? "Saved" : (listOrigin === "saved-list" ? openListName : "Your Lists");
+      }
       const container = document.getElementById("results");
       if (!items.length) { 
         container.innerHTML = '<div class="text-center text-gray-500 py-12">No matches. Try different genres.</div>'; 
@@ -455,11 +641,15 @@
         const poster = item.poster_path ? `https://image.tmdb.org/t/p/w200${item.poster_path}` : "";
         const id = item.id;
         const type = item.media_type;
+        const on = isSaved(id, type);
         return `
           <div class="card bg-white rounded-2xl overflow-hidden shadow border flex cursor-pointer" data-id="${id}" data-type="${type}" onclick="showDetail(this)">
-            ${poster ? `<img src="${poster}" class="w-20 h-30 object-cover">` : '<div class="w-20 bg-gray-200"></div>'}
+            ${poster ? `<img src="${poster}" class="w-20 object-cover" alt="">` : '<div class="w-20 bg-gray-200"></div>'}
             <div class="p-3 flex-1">
-              <div class="font-semibold">${title}</div>
+              <div class="flex items-start justify-between gap-2">
+                <div class="font-semibold">${escapeHtml(title)}</div>
+                <button type="button" class="heart-btn text-lg ${on ? "ll-link" : "text-gray-300"}" data-id="${id}" data-type="${type}" onclick="event.stopPropagation(); toggleSaveTitle(this)"><i class="${on ? "fas" : "far"} fa-heart"></i></button>
+              </div>
               <div class="text-xs text-gray-500">${year} • ${type === "tv" ? "Series" : "Movie"}</div>
               <div class="text-xs mt-1 text-gray-600 episode-info" data-id="${id}" data-type="${type}"></div>
               <div class="text-xs mt-1 line-clamp-2">${item.overview || ""}</div>
@@ -542,7 +732,8 @@
             <h2 class="text-2xl">${title} (${year})</h2>
             <p class="text-sm text-gray-600 mt-2">${d.overview || ""}</p>
             ${bingeInfo}
-            <button onclick="returnToList()" class="ll-btn w-full mt-6 py-3 rounded-xl font-semibold">Back to List</button>
+            <button type="button" id="detailHeart" data-id="${id}" data-type="${type}" onclick="toggleSaveTitle(this)" class="w-full mt-6 py-3 rounded-xl border font-semibold">${isSaved(id, type) ? "Saved" : "Save title"}</button>
+            <button onclick="returnToList()" class="ll-btn w-full mt-3 py-3 rounded-xl font-semibold">Back to List</button>
           </div>`;
         window.scrollTo({ top: 0, behavior: "smooth" });
       } catch(e) {
