@@ -1,4 +1,4 @@
-const CACHE_NAME = "landas-lists-v8";
+const CACHE_NAME = "landas-lists-v9";
 
 self.addEventListener("install", event => {
   self.skipWaiting();
