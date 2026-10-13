@@ -107,7 +107,8 @@
     <main class="p-4 pb-28">
       <section class="mb-6">
         <h2 class="text-lg mb-3">What are you in the mood for?</h2>
-        <input id="moodInput" type="text" placeholder="e.g. cozy mystery, dark fantasy series..." class="w-full border-2 border-gray-200 rounded-2xl px-4 py-4 mb-4">
+        <input id="actorInput" type="text" placeholder="Actor, e.g. Tom Hanks" class="w-full border-2 border-gray-200 rounded-2xl px-4 py-4 mb-3">
+        <input id="moodInput" type="text" placeholder="Keywords, e.g. time travel, heist" class="w-full border-2 border-gray-200 rounded-2xl px-4 py-4 mb-4">
         <div id="genreChips" class="flex flex-wrap gap-2 mb-4"></div>
         <div class="flex bg-gray-100 rounded-xl p-1 mb-4">
           <button data-type="tv" class="type-btn flex-1 py-2 rounded-lg text-sm">Series</button>
@@ -212,6 +213,8 @@
       if (searchBtn) searchBtn.onclick = performSearch;
       const moodInput = document.getElementById("moodInput");
       if (moodInput) moodInput.onkeypress = e => { if (e.key === "Enter") performSearch(); };
+      const actorInput = document.getElementById("actorInput");
+      if (actorInput) actorInput.onkeypress = e => { if (e.key === "Enter") performSearch(); };
       const backBtn = document.getElementById("backBtn");
       if (backBtn) backBtn.onclick = goBack;
 
@@ -302,6 +305,7 @@
       document.getElementById("emptyState").classList.remove("hidden");
       document.getElementById("backBtn").classList.add("hidden");
       document.getElementById("moodInput").value = "";
+      document.getElementById("actorInput").value = "";
     }
 
     async function performSearch() {
@@ -314,12 +318,16 @@
       try {
         let results = [];
         const sort = document.getElementById("sortBy").value;
-        const mood = document.getElementById("moodInput").value.trim();
+        const keywords = document.getElementById("moodInput").value.trim();
+        const actorName = document.getElementById("actorInput").value.trim();
+        const castId = actorName ? await findActorId(actorName) : null;
+        if (actorName && !castId) throw new Error(`No actor found for “${actorName}”`);
+        const keywordIds = keywords ? await findKeywordIds(keywords) : [];
         if (selectedType === "tv" || selectedType === "both") {
-          results = results.concat((await searchTMDB("tv", mood, sort)).map(r => ({...r, media_type:"tv"})));
+          results = results.concat((await searchTMDB("tv", keywordIds, sort, castId)).map(r => ({...r, media_type:"tv"})));
         }
         if (selectedType === "movie" || selectedType === "both") {
-          results = results.concat((await searchTMDB("movie", mood, sort)).map(r => ({...r, media_type:"movie"})));
+          results = results.concat((await searchTMDB("movie", keywordIds, sort, castId)).map(r => ({...r, media_type:"movie"})));
         }
         results = sortResults(results, sort);
         displayResults(results.slice(0,15));
@@ -356,12 +364,32 @@
       });
     }
 
-    async function searchTMDB(type, query, sort) {
+    async function findActorId(name) {
+      const res = await fetch(`https://api.themoviedb.org/3/search/person?api_key=${apiKey}&query=${encodeURIComponent(name)}`);
+      if (!res.ok) throw new Error("Actor search failed");
+      const person = ((await res.json()).results || [])[0];
+      return person ? person.id : null;
+    }
+
+    async function findKeywordIds(text) {
+      const parts = text.split(",").map(s => s.trim()).filter(Boolean).slice(0, 4);
+      const ids = [];
+      for (const part of parts) {
+        const res = await fetch(`https://api.themoviedb.org/3/search/keyword?api_key=${apiKey}&query=${encodeURIComponent(part)}`);
+        if (!res.ok) continue;
+        const hit = ((await res.json()).results || [])[0];
+        if (hit) ids.push(hit.id);
+      }
+      return ids;
+    }
+
+    async function searchTMDB(type, keywordIds, sort, castId) {
       const sortBy = tmdbSort(type, sort);
       let url = `https://api.themoviedb.org/3/discover/${type}?api_key=${apiKey}&sort_by=${sortBy}&language=en-US&page=1`;
       if (sort.startsWith("vote")) url += "&vote_count.gte=50";
       if (selectedGenres.size) url += `&with_genres=${[...selectedGenres].join(",")}`;
-      if (query) url += `&with_keywords=${encodeURIComponent(query)}`;
+      if (keywordIds.length) url += `&with_keywords=${keywordIds.join("|")}`;
+      if (castId) url += `&with_cast=${castId}`;
       if (selectedPlatforms.size && selectedPlatforms.size < PLATFORMS.length) {
         url += `&with_watch_providers=${[...selectedPlatforms].join("|")}&watch_region=US`;
       }
