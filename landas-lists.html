@@ -26,7 +26,19 @@
     body.dark .bg-gray-100 { background: #374151 !important; }
     body.dark input, body.dark select { background: #1f2937; color: #f3f4f6; border-color: #4b5563; }
     body.dark .genre-chip, body.dark .platform-toggle { background: #1f2937; color: #e5e7eb; border-color: #4b5563; }
-    .genre-chip.selected, .platform-toggle.selected { background: #7c3aed !important; color: white !important; border-color: #7c3aed !important; }
+    .genre-chip.selected, .platform-toggle.selected {
+      background: #7c3aed !important;
+      color: white !important;
+      border-color: #7c3aed !important;
+    }
+    body.dark .genre-chip.selected,
+    body.dark .platform-toggle.selected,
+    body.dark .type-btn.type-on {
+      background: #f8f5ff !important;
+      color: #1e1b4b !important;
+      border-color: #f8f5ff !important;
+      box-shadow: 0 0 0 1px #fff, 0 0 18px 3px rgba(245, 240, 255, 0.7) !important;
+    }
     body.dark .card { background: #1f2937; border-color: #374151; }
     body.dark nav { background: #111827; border-color: #374151; }
     .skeleton { animation: shimmer 1.8s infinite; background: linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%); background-size: 200% 100%; }
@@ -100,7 +112,7 @@
         <div class="flex bg-gray-100 rounded-xl p-1 mb-4">
           <button data-type="tv" class="type-btn flex-1 py-2 rounded-lg text-sm">Series</button>
           <button data-type="movie" class="type-btn flex-1 py-2 rounded-lg text-sm">Movies</button>
-          <button data-type="both" class="type-btn flex-1 py-2 rounded-lg text-sm bg-white shadow">Both</button>
+          <button data-type="both" class="type-btn type-on flex-1 py-2 rounded-lg text-sm bg-white shadow font-semibold">Both</button>
         </div>
       </section>
 
@@ -167,7 +179,6 @@
     document.addEventListener("DOMContentLoaded", () => {
       if (darkMode) document.body.classList.add("dark");
       try { updateDarkUI(); } catch(e) {}
-      setTimeout(refreshSelectedButtonStyles, 100);
 
       const splash = document.getElementById("splash");
       const hideSplash = () => {
@@ -205,8 +216,8 @@
       // Type toggle (Movies / Series / Both)
       document.querySelectorAll(".type-btn").forEach(btn => {
         btn.onclick = () => {
-          document.querySelectorAll(".type-btn").forEach(b => b.classList.remove("bg-white", "shadow", "font-semibold"));
-          btn.classList.add("bg-white", "shadow", "font-semibold");
+          document.querySelectorAll(".type-btn").forEach(b => b.classList.remove("bg-white", "shadow", "font-semibold", "type-on"));
+          btn.classList.add("bg-white", "shadow", "font-semibold", "type-on");
           selectedType = btn.dataset.type;
         };
       });
@@ -225,13 +236,10 @@
             btn.style.background = "";
             btn.style.color = "";
             btn.style.borderColor = "";
+            btn.style.boxShadow = "";
           } else {
             selectedGenres.add(id);
             btn.classList.add("selected");
-            const isDark = document.body.classList.contains("dark");
-            btn.style.background = isDark ? "#e5e7eb" : "#7c3aed";
-            btn.style.color = isDark ? "#111827" : "white";
-            btn.style.borderColor = isDark ? "#e5e7eb" : "#7c3aed";
           }
         };
       });
@@ -249,12 +257,10 @@
             btn.classList.remove("selected");
             btn.style.background = "";
             btn.style.color = "";
+            btn.style.boxShadow = "";
           } else {
             selectedPlatforms.add(id);
             btn.classList.add("selected");
-            const isDark = document.body.classList.contains("dark");
-            btn.style.background = isDark ? "#e5e7eb" : "#7c3aed";
-            btn.style.color = isDark ? "#111827" : "white";
           }
         };
       });
@@ -265,18 +271,6 @@
       document.body.classList.toggle("dark", darkMode);
       localStorage.setItem("dark_mode", darkMode);
       updateDarkUI();
-      refreshSelectedButtonStyles();
-    }
-
-    function refreshSelectedButtonStyles() {
-      const isDark = darkMode;
-      document.querySelectorAll(".genre-chip.selected, .platform-toggle.selected").forEach(btn => {
-        btn.style.background = isDark ? "#e5e7eb" : "#7c3aed";
-        btn.style.color = isDark ? "#111827" : "white";
-        if (btn.classList.contains("genre-chip")) {
-          btn.style.borderColor = isDark ? "#e5e7eb" : "#7c3aed";
-        }
-      });
     }
 
     function updateDarkUI() {
