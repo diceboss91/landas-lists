@@ -180,6 +180,8 @@
     let selectedGenres = new Set();
     let selectedPlatforms = new Set(PLATFORMS.map(p => p.id));
     let selectedType = "both";
+    let lastResults = [];
+    let viewingDetail = false;
     let apiKey = localStorage.getItem("tmdb_api_key") || "ed8d56e224716858d23dd28f22d8238c";
     if (apiKey === "091800b6b76094bf4cee9379a660aab8") {
       apiKey = "ed8d56e224716858d23dd28f22d8238c";
@@ -309,11 +311,20 @@
     }
 
     function goBack() {
+      if (viewingDetail) { returnToList(); return; }
       document.getElementById("resultsSection").classList.add("hidden");
       document.getElementById("emptyState").classList.remove("hidden");
       document.getElementById("backBtn").classList.add("hidden");
       document.getElementById("moodInput").value = "";
       document.getElementById("actorInput").value = "";
+    }
+
+    function returnToList() {
+      viewingDetail = false;
+      if (!lastResults.length) { goBack(); return; }
+      displayResults(lastResults);
+      const section = document.getElementById("resultsSection");
+      if (section) section.scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
     async function performSearch() {
@@ -430,6 +441,8 @@
     }
 
     function displayResults(items) {
+      lastResults = items;
+      viewingDetail = false;
       document.getElementById("resultCount").textContent = items.length + " results";
       const container = document.getElementById("results");
       if (!items.length) { 
@@ -495,6 +508,7 @@
     async function showDetail(el) {
       const id = el.dataset.id;
       const type = el.dataset.type;
+      viewingDetail = true;
       document.getElementById("results").innerHTML = '<div class="text-center py-8">Loading details...</div>';
       try {
         const res = await fetch(`https://api.themoviedb.org/3/${type}/${id}?api_key=${apiKey}`);
@@ -524,14 +538,15 @@
         }
         document.getElementById("results").innerHTML = `
           <div class="card bg-white rounded-2xl overflow-hidden shadow border p-4">
-            <button onclick="goBack()" class="ll-link text-sm mb-3"><i class="fas fa-arrow-left mr-1"></i> Back to list</button>
             ${poster ? `<img src="${poster}" class="w-full max-w-xs mx-auto rounded-xl mb-4">` : ""}
             <h2 class="text-2xl">${title} (${year})</h2>
             <p class="text-sm text-gray-600 mt-2">${d.overview || ""}</p>
             ${bingeInfo}
+            <button onclick="returnToList()" class="ll-btn w-full mt-6 py-3 rounded-xl font-semibold">Back to List</button>
           </div>`;
+        window.scrollTo({ top: 0, behavior: "smooth" });
       } catch(e) {
-        document.getElementById("results").innerHTML = `<div class="text-center text-red-500 py-8">Couldn't load details</div>`;
+        document.getElementById("results").innerHTML = `<div class="text-center text-red-500 py-8">Couldn't load details</div><button onclick="returnToList()" class="ll-btn w-full mt-4 py-3 rounded-xl font-semibold">Back to List</button>`;
       }
     }
   </script>
