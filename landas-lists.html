@@ -82,7 +82,7 @@
           </div>
           <div>
             <label class="block text-sm font-medium mb-1">TMDB API Key</label>
-            <input id="apiKeyInput" type="password" placeholder="Get free key at themoviedb.org" value="091800b6b76094bf4cee9379a660aab8" class="w-full border rounded-xl px-4 py-3">
+            <input id="apiKeyInput" type="password" placeholder="Get free key at themoviedb.org" value="ed8d56e224716858d23dd28f22d8238c" class="w-full border rounded-xl px-4 py-3">
             <p class="text-xs text-gray-500 mt-1">Free for personal use. <a href="https://www.themoviedb.org/settings/api" target="_blank" class="text-purple-600 underline">Get yours</a></p>
           </div>
           <button id="saveSettings" class="w-full bg-purple-600 text-white py-3 rounded-xl font-semibold">Save</button>
@@ -157,7 +157,11 @@
     let selectedGenres = new Set();
     let selectedPlatforms = new Set(PLATFORMS.map(p => p.id));
     let selectedType = "both";
-    let apiKey = localStorage.getItem("tmdb_api_key") || "091800b6b76094bf4cee9379a660aab8";
+    let apiKey = localStorage.getItem("tmdb_api_key") || "ed8d56e224716858d23dd28f22d8238c";
+    if (apiKey === "091800b6b76094bf4cee9379a660aab8") {
+      apiKey = "ed8d56e224716858d23dd28f22d8238c";
+      localStorage.setItem("tmdb_api_key", apiKey);
+    }
     let darkMode = localStorage.getItem("dark_mode") === "true";
 
     document.addEventListener("DOMContentLoaded", () => {
