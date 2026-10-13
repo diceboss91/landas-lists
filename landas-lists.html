@@ -132,6 +132,8 @@
         <div class="flex gap-2">
           <select id="sortBy" class="flex-1 border rounded-xl px-3 py-2 text-sm">
             <option value="popularity.desc">Most Popular</option>
+            <option value="trending.week">Trending this week</option>
+            <option value="top_rated">Top rated</option>
             <option value="date.desc">Newest to oldest</option>
             <option value="date.asc">Oldest to newest</option>
             <option value="vote_average.desc">Highest rated to lowest</option>
@@ -326,16 +328,26 @@
         const sort = document.getElementById("sortBy").value;
         const keywords = document.getElementById("moodInput").value.trim();
         const actorName = document.getElementById("actorInput").value.trim();
-        const castId = actorName ? await findActorId(actorName) : null;
-        if (actorName && !castId) throw new Error(`No actor found for “${actorName}”`);
-        const keywordIds = keywords ? await findKeywordIds(keywords) : [];
-        if (selectedType === "tv" || selectedType === "both") {
-          results = results.concat((await searchTMDB("tv", keywordIds, sort, castId)).map(r => ({...r, media_type:"tv"})));
+        if (sort === "trending.week" || sort === "top_rated") {
+          if (selectedType === "tv" || selectedType === "both") {
+            results = results.concat((await fetchRanked("tv", sort)).map(r => ({...r, media_type:"tv"})));
+          }
+          if (selectedType === "movie" || selectedType === "both") {
+            results = results.concat((await fetchRanked("movie", sort)).map(r => ({...r, media_type:"movie"})));
+          }
+          results = sortResults(results, sort === "top_rated" ? "vote_average.desc" : "popularity.desc");
+        } else {
+          const castId = actorName ? await findActorId(actorName) : null;
+          if (actorName && !castId) throw new Error(`No actor found for “${actorName}”`);
+          const keywordIds = keywords ? await findKeywordIds(keywords) : [];
+          if (selectedType === "tv" || selectedType === "both") {
+            results = results.concat((await searchTMDB("tv", keywordIds, sort, castId)).map(r => ({...r, media_type:"tv"})));
+          }
+          if (selectedType === "movie" || selectedType === "both") {
+            results = results.concat((await searchTMDB("movie", keywordIds, sort, castId)).map(r => ({...r, media_type:"movie"})));
+          }
+          results = sortResults(results, sort);
         }
-        if (selectedType === "movie" || selectedType === "both") {
-          results = results.concat((await searchTMDB("movie", keywordIds, sort, castId)).map(r => ({...r, media_type:"movie"})));
-        }
-        results = sortResults(results, sort);
         displayResults(results.slice(0,15));
       } catch (e) {
         document.getElementById("results").innerHTML = `
@@ -368,6 +380,19 @@
         bv = kind === "vote" ? (b.vote_average || 0) : (b.popularity || 0);
         return (av - bv) * (desc ? -1 : 1);
       });
+    }
+
+    async function fetchRanked(type, sort) {
+      const url = sort === "trending.week"
+        ? `https://api.themoviedb.org/3/trending/${type}/week?api_key=${apiKey}`
+        : `https://api.themoviedb.org/3/${type}/top_rated?api_key=${apiKey}&language=en-US&page=1`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("API failed");
+      let results = (await res.json()).results || [];
+      if (selectedGenres.size) {
+        results = results.filter(r => [...selectedGenres].every(id => (r.genre_ids || []).includes(id)));
+      }
+      return results;
     }
 
     async function findActorId(name) {
