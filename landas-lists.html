@@ -35,12 +35,11 @@
 </head>
 <body>
   <!-- Splash -->
-  <div id="splash" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-br from-purple-900 via-indigo-900 to-black transition-opacity duration-500 cursor-pointer">
+  <div id="splash" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-br from-purple-900 via-indigo-900 to-black transition-opacity duration-500">
     <img src="icon.jpg" alt="Landa's Lists" class="w-40 h-40 rounded-3xl shadow-2xl mb-6">
     <h1 class="text-5xl text-yellow-400">Landa's Lists</h1>
     <p class="text-purple-200 mt-1 text-sm">Find your next favorite</p>
-    <div class="mt-8 w-8 h-8 border-4 border-purple-300 border-t-yellow-400 rounded-full animate-spin"></div>
-    <p class="text-purple-300 text-xs mt-3 tracking-widest">LOADING • TAP TO SKIP</p>
+    <button id="enterBtn" class="mt-10 px-12 py-3 rounded-full bg-yellow-400 text-purple-950 font-semibold tracking-[0.25em] text-sm shadow-lg">ENTER</button>
   </div>
 
   <div class="max-w-md mx-auto bg-white min-h-screen app-frame relative">
@@ -172,8 +171,8 @@
         splash.style.opacity = "0";
         setTimeout(() => { splash.style.display = "none"; }, 500);
       };
-      setTimeout(hideSplash, 1500);
-      if (splash) splash.addEventListener("click", hideSplash);
+      const enterBtn = document.getElementById("enterBtn");
+      if (enterBtn) enterBtn.addEventListener("click", hideSplash);
 
       try { renderGenres(); } catch(e) {}
       try { renderPlatforms(); } catch(e) {}
