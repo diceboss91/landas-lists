@@ -471,8 +471,20 @@
         overview: (item.overview || "").slice(0, 280),
         release_date: item.release_date,
         first_air_date: item.first_air_date,
-        genre_ids: item.genre_ids || []
+        genre_ids: item.genre_ids || [],
+        vote_average: item.vote_average,
+        vote_count: item.vote_count
       };
+    }
+
+    function ratingLabel(item) {
+      const score = Number(item && item.vote_average);
+      if (!score) return "";
+      const votes = Number(item.vote_count) || 0;
+      let votesText = "";
+      if (votes >= 1000) votesText = (votes / 1000).toFixed(votes >= 10000 ? 0 : 1) + "k";
+      else if (votes) votesText = String(votes);
+      return votesText ? score.toFixed(1) + " · " + votesText : score.toFixed(1);
     }
 
     function loadTitles() {
@@ -642,6 +654,8 @@
         const id = item.id;
         const type = item.media_type;
         const on = isSaved(id, type);
+        const rating = ratingLabel(item);
+        const ratingHtml = rating ? ` • <span class="font-semibold" style="color:#b45309">${rating}</span>` : "";
         return `
           <div class="card bg-white rounded-2xl overflow-hidden shadow border flex cursor-pointer" data-id="${id}" data-type="${type}" onclick="showDetail(this)">
             ${poster ? `<img src="${poster}" class="w-20 object-cover" alt="">` : '<div class="w-20 bg-gray-200"></div>'}
@@ -650,7 +664,7 @@
                 <div class="font-semibold">${escapeHtml(title)}</div>
                 <button type="button" class="heart-btn text-lg ${on ? "ll-link" : "text-gray-300"}" data-id="${id}" data-type="${type}" onclick="event.stopPropagation(); toggleSaveTitle(this)"><i class="${on ? "fas" : "far"} fa-heart"></i></button>
               </div>
-              <div class="text-xs text-gray-500">${year} • ${type === "tv" ? "Series" : "Movie"}</div>
+              <div class="text-xs text-gray-500">${year} • ${type === "tv" ? "Series" : "Movie"}${ratingHtml}</div>
               <div class="text-xs mt-1 text-gray-600 episode-info" data-id="${id}" data-type="${type}"></div>
               <div class="text-xs mt-1 line-clamp-2">${item.overview || ""}</div>
               <div class="platforms text-xs mt-2 ll-link" data-id="${id}" data-type="${type}">Checking platforms...</div>
@@ -706,6 +720,8 @@
         const title = d.title || d.name;
         const year = (d.release_date || d.first_air_date || "").slice(0,4);
         const poster = d.poster_path ? `https://image.tmdb.org/t/p/w300${d.poster_path}` : "";
+        const rating = ratingLabel(d);
+        const ratingHtml = rating ? `<p class="mt-1 text-sm font-semibold" style="color:#b45309">TMDB ${rating}</p>` : "";
         let bingeInfo = "";
         if (type === "tv") {
           const episodes = d.number_of_episodes || 0;
@@ -730,6 +746,7 @@
           <div class="card bg-white rounded-2xl overflow-hidden shadow border p-4">
             ${poster ? `<img src="${poster}" class="w-full max-w-xs mx-auto rounded-xl mb-4">` : ""}
             <h2 class="text-2xl">${title} (${year})</h2>
+            ${ratingHtml}
             <p class="text-sm text-gray-600 mt-2">${d.overview || ""}</p>
             ${bingeInfo}
             <button type="button" id="detailHeart" data-id="${id}" data-type="${type}" onclick="toggleSaveTitle(this)" class="w-full mt-6 py-3 rounded-xl border font-semibold">${isSaved(id, type) ? "Saved" : "Save title"}</button>
