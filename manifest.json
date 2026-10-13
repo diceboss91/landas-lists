@@ -4,8 +4,8 @@
   "description": "Find your next favorite movie or TV show",
   "start_url": "./landas-lists.html",
   "display": "standalone",
-  "background_color": "#1a1025",
-  "theme_color": "#7c3aed",
+  "background_color": "#06101c",
+  "theme_color": "#0a1f44",
   "icons": [
     {
       "src": "icon.jpg",
