@@ -125,8 +125,10 @@
         <div class="flex gap-2">
           <select id="sortBy" class="flex-1 border rounded-xl px-3 py-2 text-sm">
             <option value="popularity.desc">Most Popular</option>
-            <option value="vote_average.desc">Highest Rated</option>
-            <option value="first_air_date.desc">Newest</option>
+            <option value="date.desc">Newest to oldest</option>
+            <option value="date.asc">Oldest to newest</option>
+            <option value="vote_average.desc">Highest rated to lowest</option>
+            <option value="vote_average.asc">Lowest rated to highest</option>
           </select>
           <button id="searchBtn" class="bg-purple-600 text-white px-6 py-2 rounded-xl font-semibold">Find</button>
         </div>
@@ -319,7 +321,7 @@
         if (selectedType === "movie" || selectedType === "both") {
           results = results.concat((await searchTMDB("movie", mood, sort)).map(r => ({...r, media_type:"movie"})));
         }
-        results.sort((a,b) => (b.popularity||0) - (a.popularity||0));
+        results = sortResults(results, sort);
         displayResults(results.slice(0,15));
       } catch (e) {
         document.getElementById("results").innerHTML = `
@@ -331,8 +333,33 @@
       }
     }
 
+    function tmdbSort(type, sort) {
+      if (sort === "date.desc") return type === "movie" ? "primary_release_date.desc" : "first_air_date.desc";
+      if (sort === "date.asc") return type === "movie" ? "primary_release_date.asc" : "first_air_date.asc";
+      return sort;
+    }
+
+    function sortResults(results, sort) {
+      const desc = !sort.endsWith(".asc");
+      const kind = sort.startsWith("date") ? "date" : sort.startsWith("vote") ? "vote" : "pop";
+      return results.slice().sort((a, b) => {
+        let av, bv;
+        if (kind === "date") {
+          av = a.release_date || a.first_air_date || "";
+          bv = b.release_date || b.first_air_date || "";
+          if (av === bv) return 0;
+          return (av > bv ? 1 : -1) * (desc ? -1 : 1);
+        }
+        av = kind === "vote" ? (a.vote_average || 0) : (a.popularity || 0);
+        bv = kind === "vote" ? (b.vote_average || 0) : (b.popularity || 0);
+        return (av - bv) * (desc ? -1 : 1);
+      });
+    }
+
     async function searchTMDB(type, query, sort) {
-      let url = `https://api.themoviedb.org/3/discover/${type}?api_key=${apiKey}&sort_by=${sort}&language=en-US&page=1`;
+      const sortBy = tmdbSort(type, sort);
+      let url = `https://api.themoviedb.org/3/discover/${type}?api_key=${apiKey}&sort_by=${sortBy}&language=en-US&page=1`;
+      if (sort.startsWith("vote")) url += "&vote_count.gte=50";
       if (selectedGenres.size) url += `&with_genres=${[...selectedGenres].join(",")}`;
       if (query) url += `&with_keywords=${encodeURIComponent(query)}`;
       if (selectedPlatforms.size && selectedPlatforms.size < PLATFORMS.length) {
